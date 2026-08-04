@@ -25,9 +25,10 @@
     .btn-indigo:hover { background-color: #2d3eb0; }
     .btn-red { background-color: #ef4444; }
     .btn-red:hover { background-color: #dc2626; }
+    .btn-gray { background-color: #64748b; }
 
     /* 유튜브 비디오 모니터 화면 */
-    .video-container { width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 16px; display: none; }
+    .video-container { width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 12px; display: none; }
     .video-container iframe { width: 100%; height: 100%; border: none; }
 
     /* 토글 및 리버브 박스 */
@@ -71,6 +72,11 @@
       <!-- 유튜브 화면 -->
       <div id="videoContainer" class="video-container">
         <iframe id="ytIframe" allow="autoplay"></iframe>
+      </div>
+
+      <!-- 차단된 영상 대리 출력 버튼 -->
+      <div id="ytFallbackBtn" style="display:none; text-align:center; margin-bottom:16px;">
+        <button class="btn-main btn-gray" onclick="openYtWindow()">🎬 화면이 안 나오나요? 유튜브에서 가사 띄우기 ↗</button>
       </div>
 
       <!-- 백그라운드 추출 오디오 플레이어 (숨김 처리) -->
