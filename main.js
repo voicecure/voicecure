@@ -1,35 +1,43 @@
-// --- 0. 탭 전환 기능 ---
-function switchTab(tabId, btnElem) {
-  document.querySelectorAll('.tab-content').forEach(function(tab) {
-    tab.classList.remove('active');
-  });
-  document.querySelectorAll('.nav-btn').forEach(function(btn) {
-    btn.classList.remove('active');
-  });
-  document.getElementById(tabId).classList.add('active');
-  btnElem.classList.add('active');
-}
+// 오디오 제어 변수
+let audioCtx = null;
+let micStream = null;
+let micSourceNode = null;
+let mrSourceNode = null;
+let dryGainNode = null;
+let wetGainNode = null;
+let delayNode = null;
+let feedbackGain = null;
+let mediaRecorder = null;
+let recordedChunks = [];
+let isAudioLoaded = false;
 
-// --- 1. 유튜브 음원 추출 기능 ---
+// 1. 유튜브 ID 추출 함수
 function extractVideoId(url) {
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
   const match = url.match(regExp);
   return (match && match[2].length === 11) ? match[2] : null;
 }
 
-function startYoutubeDownload() {
-  const url = document.getElementById('youtubeUrl').value.trim();
-  const status = document.getElementById('ytStatus');
+// 2. 유튜브 노래방 영상 및 백그라운드 MR 불러오기
+function loadYoutubeKaraoke() {
+  const url = document.getElementById('ytUrlInput').value.trim();
+  const status = document.getElementById('recStatus');
   const videoId = extractVideoId(url);
 
-  if(!videoId) {
+  if (!videoId) {
     alert("올바른 유튜브 주소를 입력해 보세요.");
     return;
   }
 
   status.style.color = "#3b52d4";
-  status.innerText = "음원 추출 진행 중...";
+  status.innerText = "🎬 비디오 및 반주 음원 파이프라인 구성 중...";
 
+  // 가사 화면 출력용 Iframe 세팅
+  const iframe = document.getElementById('ytIframe');
+  iframe.src = "https://www.youtube.com/embed/" + videoId + "?enablejsapi=1&mute=1"; // 화면용 영상은 음소거 실행
+  document.getElementById('videoContainer').style.display = "block";
+
+  // 오디오 엔진에 연결할 고품질 MP3 스트림 수신
   fetch('https://youtube-mp36.p.rapidapi.com/dl?id=' + videoId, {
     method: 'GET',
     headers: {
@@ -39,62 +47,35 @@ function startYoutubeDownload() {
   })
   .then(res => res.json())
   .then(data => {
-    if(data.status === 'ok' || data.link) {
+    if (data.status === 'ok' || data.link) {
+      const audioPlayer = document.getElementById('internalAudioPlayer');
+      audioPlayer.src = data.link;
+      isAudioLoaded = true;
+
       status.style.color = "#10b981";
-      status.innerHTML = '<div style="margin-top:8px;"><a href="' + data.link + '" target="_blank" style="color:#3b52d4; font-weight:700; text-decoration:underline;">🎧 MP3 파일 다운로드 열기 ➔</a></div>';
+      status.innerText = "🟢 반주가 가동 준비되었습니다! [반주 재생 & 녹음 시작]을 눌러보세요.";
     } else {
       status.style.color = "#ef4444";
-      status.innerText = "추출에 실패했습니다.";
+      status.innerText = "음원 추출 실패. 다른 유튜브 링크로 시도해 보세요.";
     }
   })
   .catch(() => {
     status.style.color = "#ef4444";
-    status.innerText = "통신 오류가 발생했습니다.";
+    status.innerText = "통신 연결 오류가 발생했습니다.";
   });
 }
 
-// --- 2. 가사 빠른 검색 기능 ---
-function searchLyrics(portal) {
-  const kw = document.getElementById('lyricsKeyword').value.trim();
-  if (!kw) {
-    alert('검색할 곡명이나 아티스트를 입력해 보세요.');
-    return;
-  }
-  const encoded = encodeURIComponent(kw + ' 가사');
-  let target = portal === 'naver' 
-    ? 'https://search.naver.com/search.naver?query=' + encoded 
-    : 'https://www.melon.com/search/total/index.htm?q=' + encodeURIComponent(kw);
-  window.open(target, '_blank');
-}
-
-// --- 3. 오디오 엔진 (녹음 + 후처리 리버브) ---
-let audioCtx = null;
-let micStream = null;
-let micSourceNode = null;
-let dryGainNode = null;
-let wetGainNode = null;
-let delayNode = null;
-let feedbackGain = null;
-let mediaRecorder = null;
-let recordedChunks = [];
-
-function loadMrFile(input) {
-  const file = input.files[0];
-  if (file) {
-    const mrPlayer = document.getElementById('mrPlayer');
-    mrPlayer.src = URL.createObjectURL(file);
-    mrPlayer.style.display = "block";
-  }
-}
-
+// 3. 오디오 회로 구성
 async function initAudioEngine() {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    // 마이크 신호 입력
     micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     micSourceNode = audioCtx.createMediaStreamSource(micStream);
 
     dryGainNode = audioCtx.createGain();
-    dryGainNode.gain.value = 1.5; // 마이크 기본 볼륨 1.5배
+    dryGainNode.gain.value = 1.8; // 마이크 음량 증폭
 
     // 리버브 회로
     delayNode = audioCtx.createDelay();
@@ -112,6 +93,10 @@ async function initAudioEngine() {
     micSourceNode.connect(delayNode);
     delayNode.connect(wetGainNode);
 
+    // 내부 MP3 오디오 오디오 컨텍스트 연결
+    const audioPlayer = document.getElementById('internalAudioPlayer');
+    mrSourceNode = audioCtx.createMediaElementSource(audioPlayer);
+
     updateReverb(document.getElementById('reverbRange').value);
   }
 
@@ -127,38 +112,42 @@ function updateReverb(val) {
   }
 }
 
-// 실시간 귀 모니터링 토글
-async function toggleMonitoring() {
+function toggleMonitoring() {
   const isChecked = document.getElementById('monitorToggle').checked;
-  try {
-    await initAudioEngine();
-    if (isChecked) {
-      dryGainNode.connect(audioCtx.destination);
-      wetGainNode.connect(audioCtx.destination);
-    } else {
-      dryGainNode.disconnect(audioCtx.destination);
-      wetGainNode.disconnect(audioCtx.destination);
-    }
-  } catch (err) {
-    alert("마이크 연결 실패: " + err.message);
-    document.getElementById('monitorToggle').checked = false;
+  if (!audioCtx) return;
+  
+  if (isChecked) {
+    dryGainNode.connect(audioCtx.destination);
+    wetGainNode.connect(audioCtx.destination);
+  } else {
+    dryGainNode.disconnect(audioCtx.destination);
+    wetGainNode.disconnect(audioCtx.destination);
   }
 }
 
-// 녹음 시작 (모니터링을 꺼도 녹음 트랙에는 리버브가 적용된 소리가 들어갑니다)
+// 4. 동시 재생 및 Y자 녹음 시작
 async function startRecording() {
   const status = document.getElementById('recStatus');
-  const mrPlayer = document.getElementById('mrPlayer');
+  const audioPlayer = document.getElementById('internalAudioPlayer');
+  const iframe = document.getElementById('ytIframe');
+
+  if (!isAudioLoaded) {
+    alert("먼저 유튜브 주소를 입력하고 [반주 불러오기]를 진행해 보세요.");
+    return;
+  }
 
   try {
     await initAudioEngine();
 
-    // 마이크 신호와 리버브 신호를 믹싱할 목적지 트랙 생성
+    // 반주 소리를 귀(이어폰)로 전달
+    mrSourceNode.connect(audioCtx.destination);
+
+    // 반주 + 목소리 + 리버브 믹싱 트랙 생성
     const dest = audioCtx.createMediaStreamDestination();
+    mrSourceNode.connect(dest);
     dryGainNode.connect(dest);
     wetGainNode.connect(dest);
 
-    // 믹싱된 트랙을 녹음기(MediaRecorder)에 전달
     mediaRecorder = new MediaRecorder(dest.stream);
     recordedChunks = [];
 
@@ -176,36 +165,38 @@ async function startRecording() {
 
     mediaRecorder.start();
 
-    // MR 반주 자동 재생
-    if (mrPlayer.src) {
-      mrPlayer.currentTime = 0;
-      mrPlayer.play();
-    }
+    // 유튜브 가사 화면 영상 재생 & 백그라운드 반주 오디오동시 싱크 실행
+    iframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+    audioPlayer.currentTime = 0;
+    audioPlayer.play();
 
     document.getElementById('btnRecStart').style.display = "none";
     document.getElementById('btnRecStop').style.display = "inline-block";
     status.style.color = "#ef4444";
-    status.innerText = "🔴 반주 재생 및 녹음 중입니다. (편하게 노래 불러보세요!)";
+    status.innerText = "🔴 가사를 보며 노래를 불러보세요! (반주+목소리 녹음 중)";
 
   } catch (err) {
-    alert("마이크 권한을 허용해 보세요.");
+    alert("오디오 가동 실패: " + err.message);
   }
 }
 
-// 녹음 정지
+// 5. 녹음 정지
 function stopRecording() {
-  const mrPlayer = document.getElementById('mrPlayer');
+  const audioPlayer = document.getElementById('internalAudioPlayer');
+  const iframe = document.getElementById('ytIframe');
+
   if (mediaRecorder && mediaRecorder.state !== "inactive") {
     mediaRecorder.stop();
   }
-  if (mrPlayer.src) {
-    mrPlayer.pause();
-  }
+
+  // 비디오 및 반주 정지
+  iframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
+  audioPlayer.pause();
 
   document.getElementById('btnRecStart').style.display = "inline-block";
   document.getElementById('btnRecStop').style.display = "none";
 
   const status = document.getElementById('recStatus');
   status.style.color = "#10b981";
-  status.innerText = "🟢 녹음 완료! 아래 플레이어에서 리버브가 입혀진 내 노래를 들어보세요.";
+  status.innerText = "🟢 녹음이 완료되었습니다. 하단에서 완성본 파일 음원을 들어보세요!";
 }
