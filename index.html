@@ -1,28 +1,21 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <link rel="manifest" href="manifest.json">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>보이스큐어 보컬 트레이닝 툴킷</title>
+  <title>보이스큐어 스마트 노래방 스튜디오</title>
+  <link rel="manifest" href="manifest.json">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f8fafc; color: #1e293b; min-height: 100vh; display: flex; justify-content: center; padding: 20px 10px; }
 
-    .app-container { width: 100%; max-width: 580px; background: #ffffff; border-radius: 20px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; overflow: hidden; }
-    .header { padding: 24px 24px 16px 24px; text-align: center; border-bottom: 1px solid #f1f5f9; }
+    .app-container { width: 100%; max-width: 600px; background: #ffffff; border-radius: 20px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; overflow: hidden; }
+    .header { padding: 20px; text-align: center; border-bottom: 1px solid #f1f5f9; }
     .header h1 { font-size: 20px; font-weight: 800; color: #3b52d4; letter-spacing: -0.5px; }
     .header p { font-size: 13px; color: #64748b; margin-top: 4px; }
 
-    /* 탭 메뉴 */
-    .nav-tabs { display: flex; background-color: #f1f5f9; padding: 4px; margin: 16px 20px 0 20px; border-radius: 12px; gap: 4px; }
-    .nav-btn { flex: 1; border: none; background: transparent; padding: 10px 0; border-radius: 8px; font-size: 13px; font-weight: 700; color: #64748b; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
-    .nav-btn.active { background-color: #ffffff; color: #3b52d4; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-
-    .content-body { padding: 24px; }
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
-
+    .content-body { padding: 20px; }
+    
     .form-group { margin-bottom: 16px; text-align: left; }
     .form-group label { display: block; font-size: 13px; font-weight: 700; color: #334155; margin-bottom: 6px; }
     .form-control { width: 100%; padding: 12px 14px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; outline: none; }
@@ -32,9 +25,12 @@
     .btn-indigo:hover { background-color: #2d3eb0; }
     .btn-red { background-color: #ef4444; }
     .btn-red:hover { background-color: #dc2626; }
-    .btn-gray { background-color: #64748b; }
 
-    /* 토글 및 스위치 */
+    /* 유튜브 비디오 모니터 화면 */
+    .video-container { width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 16px; display: none; }
+    .video-container iframe { width: 100%; height: 100%; border: none; }
+
+    /* 토글 및 리버브 박스 */
     .toggle-box { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 14px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
     .toggle-info { font-size: 13px; font-weight: 700; color: #1e40af; }
     .toggle-sub { font-size: 11px; color: #3b82f6; margin-top: 2px; }
@@ -46,12 +42,11 @@
     input:checked + .slider { background-color: #3b52d4; }
     input:checked + .slider:before { transform: translateX(20px); }
 
-    /* 리버브 슬라이더 박스 */
     .reverb-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; margin-bottom: 16px; }
     .reverb-header { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; color: #334155; margin-bottom: 8px; }
     .range-input { width: 100%; accent-color: #3b52d4; cursor: pointer; }
 
-    .status-msg { margin-top: 12px; font-size: 13px; font-weight: 600; text-align: center; }
+    .status-msg { margin-top: 10px; font-size: 13px; font-weight: 600; text-align: center; }
     .result-box { margin-top: 16px; padding: 14px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; text-align: center; }
   </style>
 </head>
@@ -59,89 +54,66 @@
 
   <div class="app-container">
     <div class="header">
-      <h1>VOICECURE STUDIO</h1>
-      <p>보컬 트레이닝 웹 익스프레스 툴킷</p>
-    </div>
-
-    <div class="nav-tabs">
-      <button class="nav-btn active" onclick="switchTab('youtube-tab', this)">음원 추출</button>
-      <button class="nav-btn" onclick="switchTab('lyrics-tab', this)">가사 검색</button>
-      <button class="nav-btn" onclick="switchTab('rec-tab', this)">모니터링 녹음실</button>
+      <h1>VOICECURE KARAOKE</h1>
+      <p>유튜브 가사 화면 보며 부르는 스마트 녹음실</p>
     </div>
 
     <div class="content-body">
-      <!-- 1. 유튜브 음원 추출 -->
-      <div id="youtube-tab" class="tab-content active">
-        <div class="form-group">
-          <label>유튜브 영상 주소 (URL)</label>
-          <input type="text" id="youtubeUrl" class="form-control" placeholder="https://www.youtube.com/watch?v=...">
-        </div>
-        <button class="btn-main btn-indigo" onclick="startYoutubeDownload()">320K MP3 음원 추출하기</button>
-        <div id="ytStatus" class="status-msg"></div>
-      </div>
-
-      <!-- 2. 가사 빠른 검색 -->
-      <div id="lyrics-tab" class="tab-content">
-        <div class="form-group">
-          <label>검색어 (아티스트, 곡명)</label>
-          <input type="text" id="lyricsKeyword" class="form-control" placeholder="예: Bruno Mars Grenade" onkeyup="if(event.keyCode===13) searchLyrics('naver')">
-        </div>
+      <!-- 유튜브 URL 입력 -->
+      <div class="form-group">
+        <label>🎬 유튜브 노래방 영상 주소 (TJ / KY / MR)</label>
         <div style="display: flex; gap: 8px;">
-          <button class="btn-main btn-indigo" style="flex:1;" onclick="searchLyrics('naver')">네이버 가사 ↗</button>
-          <button class="btn-main btn-gray" style="flex:1;" onclick="searchLyrics('melon')">멜론 가사 ↗</button>
+          <input type="text" id="ytUrlInput" class="form-control" placeholder="https://www.youtube.com/watch?v=...">
+          <button class="btn-main btn-indigo" style="width: 130px;" onclick="loadYoutubeKaraoke()">반주 불러오기</button>
         </div>
       </div>
 
-      <!-- 3. 반주(MR) 재생 + 실시간 리버브 모니터링 녹음실 -->
-      <div id="rec-tab" class="tab-content">
-        
-        <!-- MR 반주 불러오기 -->
-        <div class="form-group">
-          <label>🎵 반주(MR) 파일 불러오기 (선택사항)</label>
-          <input type="file" id="mrFileInput" accept="audio/*" class="form-control" onchange="loadMrFile(this)">
-          <audio id="mrPlayer" controls style="width:100%; margin-top:8px; display:none;"></audio>
-        </div>
+      <!-- 유튜브 화면 -->
+      <div id="videoContainer" class="video-container">
+        <iframe id="ytIframe" allow="autoplay"></iframe>
+      </div>
 
-        <!-- 귀 모니터링 토글 -->
-        <div class="toggle-box">
-          <div>
-            <div class="toggle-info">🎧 실시간 귀 모니터링</div>
-            <div class="toggle-sub">유선 이어폰 사용 권장 (지연 최소화)</div>
-          </div>
-          <label class="switch">
-            <input type="checkbox" id="monitorToggle" onchange="toggleMonitoring()">
-            <span class="slider"></span>
-          </label>
-        </div>
+      <!-- 백그라운드 추출 오디오 플레이어 (숨김 처리) -->
+      <audio id="internalAudioPlayer" crossorigin="anonymous" style="display:none;"></audio>
 
-        <!-- 리버브 (울림) 조절바 -->
-        <div class="reverb-box">
-          <div class="reverb-header">
-            <span>✨ 보컬 리버브 (울림/에코)</span>
-            <span id="reverbValText">30%</span>
-          </div>
-          <input type="range" id="reverbRange" min="0" max="100" value="30" class="range-input" oninput="updateReverb(this.value)">
+      <!-- 귀 모니터링 토글 -->
+      <div class="toggle-box">
+        <div>
+          <div class="toggle-info">🎧 실시간 귀 모니터링</div>
+          <div class="toggle-sub">유선 연결 시에만 권장 (무선은 OFF 추천)</div>
         </div>
+        <label class="switch">
+          <input type="checkbox" id="monitorToggle" onchange="toggleMonitoring()">
+          <span class="slider"></span>
+        </label>
+      </div>
 
-        <!-- 녹음 버튼 -->
-        <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-          <button id="btnRecStart" class="btn-main btn-indigo" style="flex:1;" onclick="startRecording()">🎤 녹음 & 반주 시작</button>
-          <button id="btnRecStop" class="btn-main btn-red" style="flex:1; display:none;" onclick="stopRecording()">⏹️ 녹음 중지</button>
+      <!-- 보컬 리버브 슬라이더 -->
+      <div class="reverb-box">
+        <div class="reverb-header">
+          <span>✨ 보컬 리버브 (공간감)</span>
+          <span id="reverbValText">35%</span>
         </div>
+        <input type="range" id="reverbRange" min="0" max="100" value="35" class="range-input" oninput="updateReverb(this.value)">
+      </div>
 
-        <div id="recStatus" class="status-msg" style="color:#64748b;">녹음 시작을 누르면 반주 재생과 마이크 녹음이 동시에 시작됩니다.</div>
+      <!-- 녹음 버튼 -->
+      <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+        <button id="btnRecStart" class="btn-main btn-indigo" style="flex:1;" onclick="startRecording()">🎤 반주 재생 & 녹음 시작</button>
+        <button id="btnRecStop" class="btn-main btn-red" style="flex:1; display:none;" onclick="stopRecording()">⏹️ 녹음 중지</button>
+      </div>
 
-        <!-- 녹음 결과물 다운로드 -->
-        <div id="recResultBox" class="result-box" style="display:none;">
-          <p style="font-size:12px; font-weight:700; margin-bottom:8px; color:#334155;">부른 노래 다시 듣기</p>
-          <audio id="audioPreview" controls style="width:100%; margin-bottom:10px;"></audio>
-          <a id="btnDownloadAudio" href="#" download="vocal_recording.webm" class="btn-main btn-indigo" style="display:inline-block; text-decoration:none; padding:10px;">💾 녹음 파일 소장하기 (다운로드)</a>
-        </div>
+      <div id="recStatus" class="status-msg" style="color:#64748b;">유튜브 링크를 넣고 [반주 불러오기]를 눌러보세요.</div>
+
+      <!-- 결과 확인 -->
+      <div id="recResultBox" class="result-box" style="display:none;">
+        <p style="font-size:12px; font-weight:700; margin-bottom:8px; color:#334155;">부른 노래 다시 듣기 (반주 + 보컬 믹스)</p>
+        <audio id="audioPreview" controls style="width:100%; margin-bottom:10px;"></audio>
+        <a id="btnDownloadAudio" href="#" download="karaoke_vocal.webm" class="btn-main btn-indigo" style="display:inline-block; text-decoration:none; padding:10px;">💾 음원 파일 다운로드</a>
       </div>
     </div>
   </div>
 
-  <!-- 자바스크립트 연결 -->
   <script src="main.js"></script>
 </body>
 </html>
