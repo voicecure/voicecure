@@ -34,8 +34,9 @@ function loadYoutubeKaraoke() {
 
   // 가사 화면 출력용 Iframe 세팅
   const iframe = document.getElementById('ytIframe');
-  iframe.src = "https://www.youtube.com/embed/" + videoId + "?enablejsapi=1&mute=1"; // 화면용 영상은 음소거 실행
+  iframe.src = "https://www.youtube.com/embed/" + videoId + "?enablejsapi=1&mute=1";
   document.getElementById('videoContainer').style.display = "block";
+  document.getElementById('ytFallbackBtn').style.display = "block";
 
   // 오디오 엔진에 연결할 고품질 MP3 스트림 수신
   fetch('https://youtube-mp36.p.rapidapi.com/dl?id=' + videoId, {
@@ -63,6 +64,12 @@ function loadYoutubeKaraoke() {
     status.style.color = "#ef4444";
     status.innerText = "통신 연결 오류가 발생했습니다.";
   });
+}
+
+// 유튜브 팝업 창 열기 (차단 시 가사 확인용)
+function openYtWindow() {
+  const url = document.getElementById('ytUrlInput').value.trim();
+  if (url) window.open(url, '_blank');
 }
 
 // 3. 오디오 회로 구성
@@ -165,7 +172,7 @@ async function startRecording() {
 
     mediaRecorder.start();
 
-    // 유튜브 가사 화면 영상 재생 & 백그라운드 반주 오디오동시 싱크 실행
+    // 유튜브 가사 화면 영상 재생 & 백그라운드 반주 오디오 동시 실행
     iframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
     audioPlayer.currentTime = 0;
     audioPlayer.play();
