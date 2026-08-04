@@ -24,7 +24,10 @@ function loadYoutubeKaraoke() {
   const urlInput = document.getElementById('ytUrlInput');
   const status = document.getElementById('recStatus');
   
-  if (!urlInput) return;
+  if (!urlInput || !status) {
+    alert("화면 요소를 찾을 수 없습니다.");
+    return;
+  }
 
   const url = urlInput.value.trim();
   const videoId = extractVideoId(url);
@@ -39,9 +42,11 @@ function loadYoutubeKaraoke() {
   status.innerText = "🎬 비디오 및 반주 음원 준비 중...";
 
   const iframe = document.getElementById('ytIframe');
-  iframe.src = "https://www.youtube.com/embed/" + videoId + "?enablejsapi=1&mute=1";
-  document.getElementById('videoContainer').style.display = "block";
-  document.getElementById('ytFallbackBtn').style.display = "block";
+  if (iframe) {
+    iframe.src = "https://www.youtube.com/embed/" + videoId + "?enablejsapi=1&mute=1";
+    document.getElementById('videoContainer').style.display = "block";
+    document.getElementById('ytFallbackBtn').style.display = "block";
+  }
 
   fetch('https://youtube-mp36.p.rapidapi.com/dl?id=' + videoId, {
     method: 'GET',
@@ -72,11 +77,13 @@ function loadYoutubeKaraoke() {
 }
 
 function openYtWindow() {
-  const url = document.getElementById('ytUrlInput').value.trim();
-  if (url) window.open(url, '_blank');
+  const urlInput = document.getElementById('ytUrlInput');
+  if (urlInput && urlInput.value.trim()) {
+    window.open(urlInput.value.trim(), '_blank');
+  }
 }
 
-// 3. 오디오 회로 구성 (실시간 모니터링 출력 제거)
+// 3. 오디오 회로 구성
 async function initAudioEngine() {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -87,7 +94,6 @@ async function initAudioEngine() {
     dryGainNode = audioCtx.createGain();
     dryGainNode.gain.value = 1.8;
 
-    // 리버브 회로
     delayNode = audioCtx.createDelay();
     delayNode.delayTime.value = 0.12;
 
@@ -115,7 +121,8 @@ async function initAudioEngine() {
 }
 
 function updateReverb(val) {
-  document.getElementById('reverbValText').innerText = val + '%';
+  const textElem = document.getElementById('reverbValText');
+  if (textElem) textElem.innerText = val + '%';
   if (wetGainNode) {
     wetGainNode.gain.value = (val / 100) * 0.6;
   }
@@ -136,10 +143,8 @@ async function startRecording() {
   try {
     await initAudioEngine();
 
-    // 반주만 이어폰 스피커로 출력 (마이크 소리는 스피커 출력 차단)
     mrSourceNode.connect(audioCtx.destination);
 
-    // 녹음기 트랙으로만 반주 + 마이크 + 리버브 전달
     const dest = audioCtx.createMediaStreamDestination();
     mrSourceNode.connect(dest);
     dryGainNode.connect(dest);
@@ -162,8 +167,9 @@ async function startRecording() {
 
     mediaRecorder.start();
 
-    // 반주 및 비디오 재생
-    iframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+    if (iframe && iframe.contentWindow) {
+      iframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+    }
     audioPlayer.currentTime = 0;
     audioPlayer.play();
 
@@ -186,7 +192,9 @@ function stopRecording() {
     mediaRecorder.stop();
   }
 
-  iframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
+  if (iframe && iframe.contentWindow) {
+    iframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
+  }
   audioPlayer.pause();
 
   document.getElementById('btnRecStart').style.display = "inline-block";
