@@ -53,7 +53,7 @@
         <label>🎬 유튜브 노래방 영상 주소 (TJ / KY / MR)</label>
         <div style="display: flex; gap: 8px;">
           <input type="text" id="ytUrlInput" class="form-control" placeholder="https://www.youtube.com/watch?v=...">
-          <button class="btn-main btn-indigo" style="width: 130px;" onclick="loadYoutubeKaraoke()">반주 불러오기</button>
+          <button type="button" class="btn-main btn-indigo" style="width: 130px;" onclick="loadYoutubeKaraoke()">반주 불러오기</button>
         </div>
       </div>
 
@@ -64,7 +64,7 @@
 
       <!-- 차단된 영상 대리 출력 버튼 -->
       <div id="ytFallbackBtn" style="display:none; text-align:center; margin-bottom:16px;">
-        <button class="btn-main btn-gray" onclick="openYtWindow()">🎬 화면이 안 나오나요? 유튜브에서 가사 띄우기 ↗</button>
+        <button type="button" class="btn-main btn-gray" onclick="openYtWindow()">🎬 화면이 안 나오나요? 유튜브에서 가사 띄우기 ↗</button>
       </div>
 
       <!-- 백그라운드 추출 오디오 플레이어 (숨김 처리) -->
@@ -81,8 +81,8 @@
 
       <!-- 녹음 버튼 -->
       <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-        <button id="btnRecStart" class="btn-main btn-indigo" style="flex:1;" onclick="startRecording()">🎤 반주 재생 & 녹음 시작</button>
-        <button id="btnRecStop" class="btn-main btn-red" style="flex:1; display:none;" onclick="stopRecording()">⏹️ 녹음 중지</button>
+        <button type="button" id="btnRecStart" class="btn-main btn-indigo" style="flex:1;" onclick="startRecording()">🎤 반주 재생 & 녹음 시작</button>
+        <button type="button" id="btnRecStop" class="btn-main btn-red" style="flex:1; display:none;" onclick="stopRecording()">⏹️ 녹음 중지</button>
       </div>
 
       <div id="recStatus" class="status-msg" style="color:#64748b;">유튜브 링크를 넣고 [반주 불러오기]를 눌러보세요.</div>
@@ -96,6 +96,7 @@
     </div>
   </div>
 
+  <!-- 반드시 body 태그 맨 아래에 자바스크립트를 배치해 줍니다 -->
   <script src="main.js"></script>
 </body>
 </html>
