@@ -67,11 +67,14 @@ function searchLyrics(portal) {
   window.open(target, '_blank');
 }
 
-// --- 3. 오디오 엔진 (강제 수도꼭지 해제 + 볼륨 3배 앰프) ---
+// --- 3. 오디오 엔진 (녹음 + 후처리 리버브) ---
 let audioCtx = null;
 let micStream = null;
 let micSourceNode = null;
 let dryGainNode = null;
+let wetGainNode = null;
+let delayNode = null;
+let feedbackGain = null;
 let mediaRecorder = null;
 let recordedChunks = [];
 
@@ -84,24 +87,34 @@ function loadMrFile(input) {
   }
 }
 
-// 마이크 엔진 접속 및 수도꼭지 강제 개방
 async function initAudioEngine() {
   if (!audioCtx) {
-    // 1. 순수 표준 오디오 엔진 생성
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    
-    // 2. 가장 안정적인 기본 마이크 권한 수신
     micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     micSourceNode = audioCtx.createMediaStreamSource(micStream);
 
-    // 3. 목소리 크기를 3배로 키우는 강력 앰프 설치
     dryGainNode = audioCtx.createGain();
-    dryGainNode.gain.value = 3.0; 
+    dryGainNode.gain.value = 1.5; // 마이크 기본 볼륨 1.5배
+
+    // 리버브 회로
+    delayNode = audioCtx.createDelay();
+    delayNode.delayTime.value = 0.12;
+
+    feedbackGain = audioCtx.createGain();
+    feedbackGain.gain.value = 0.35;
+
+    wetGainNode = audioCtx.createGain();
+
+    delayNode.connect(feedbackGain);
+    feedbackGain.connect(delayNode);
 
     micSourceNode.connect(dryGainNode);
+    micSourceNode.connect(delayNode);
+    delayNode.connect(wetGainNode);
+
+    updateReverb(document.getElementById('reverbRange').value);
   }
 
-  // 4. 모바일 브라우저의 잠긴 수도꼭지를 손가락 터치 시점에 강제로 엽니다.
   if (audioCtx.state === 'suspended') {
     await audioCtx.resume();
   }
@@ -109,26 +122,22 @@ async function initAudioEngine() {
 
 function updateReverb(val) {
   document.getElementById('reverbValText').innerText = val + '%';
+  if (wetGainNode) {
+    wetGainNode.gain.value = (val / 100) * 0.6;
+  }
 }
 
-// 귀 모니터링 토글
+// 실시간 귀 모니터링 토글
 async function toggleMonitoring() {
   const isChecked = document.getElementById('monitorToggle').checked;
-  const status = document.getElementById('recStatus');
-
   try {
-    // 터치하는 순간 오디오 엔진 작동 및 잠금 해제
     await initAudioEngine();
-
     if (isChecked) {
-      // 마이크 ➔ 3배 앰프 ➔ 이어폰 출력 연결
       dryGainNode.connect(audioCtx.destination);
-      status.style.color = "#10b981";
-      status.innerText = "🔊 모니터링 켜짐! (오디오 상태: " + audioCtx.state + ")";
+      wetGainNode.connect(audioCtx.destination);
     } else {
       dryGainNode.disconnect(audioCtx.destination);
-      status.style.color = "#64748b";
-      status.innerText = "🔇 모니터링 꺼짐";
+      wetGainNode.disconnect(audioCtx.destination);
     }
   } catch (err) {
     alert("마이크 연결 실패: " + err.message);
@@ -136,19 +145,21 @@ async function toggleMonitoring() {
   }
 }
 
-// 녹음 시작
+// 녹음 시작 (모니터링을 꺼도 녹음 트랙에는 리버브가 적용된 소리가 들어갑니다)
 async function startRecording() {
   const status = document.getElementById('recStatus');
   const mrPlayer = document.getElementById('mrPlayer');
 
   try {
     await initAudioEngine();
-    
-    if (document.getElementById('monitorToggle').checked) {
-      dryGainNode.connect(audioCtx.destination);
-    }
 
-    mediaRecorder = new MediaRecorder(micStream);
+    // 마이크 신호와 리버브 신호를 믹싱할 목적지 트랙 생성
+    const dest = audioCtx.createMediaStreamDestination();
+    dryGainNode.connect(dest);
+    wetGainNode.connect(dest);
+
+    // 믹싱된 트랙을 녹음기(MediaRecorder)에 전달
+    mediaRecorder = new MediaRecorder(dest.stream);
     recordedChunks = [];
 
     mediaRecorder.ondataavailable = e => {
@@ -164,7 +175,8 @@ async function startRecording() {
     };
 
     mediaRecorder.start();
-    
+
+    // MR 반주 자동 재생
     if (mrPlayer.src) {
       mrPlayer.currentTime = 0;
       mrPlayer.play();
@@ -173,7 +185,7 @@ async function startRecording() {
     document.getElementById('btnRecStart').style.display = "none";
     document.getElementById('btnRecStop').style.display = "inline-block";
     status.style.color = "#ef4444";
-    status.innerText = "🔴 녹음 진행 중입니다...";
+    status.innerText = "🔴 반주 재생 및 녹음 중입니다. (편하게 노래 불러보세요!)";
 
   } catch (err) {
     alert("마이크 권한을 허용해 보세요.");
@@ -192,8 +204,8 @@ function stopRecording() {
 
   document.getElementById('btnRecStart').style.display = "inline-block";
   document.getElementById('btnRecStop').style.display = "none";
-  
+
   const status = document.getElementById('recStatus');
   status.style.color = "#10b981";
-  status.innerText = "🟢 녹음 완료! 아래에서 들어보세요.";
+  status.innerText = "🟢 녹음 완료! 아래 플레이어에서 리버브가 입혀진 내 노래를 들어보세요.";
 }
