@@ -1,67 +1,53 @@
-// 초경량 밸런스 오디오 엔진 (볼륨 증폭 + 초경량 리버브)
+// DEBUGONLY: 순수 마이크 입력 테스트 엔진 (main.js)
 async function initAudioEngine() {
   if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)({
-      latencyHint: 0
-    });
+    console.log("디버그: 오디오 엔진 초기화 중...");
+    // 표준 모드로 오디오 컨텍스트 생성
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-    micStream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: false,
-        noiseSuppression: false,
-        autoGainControl: true, // 마이크 기본 수신 볼륨을 켜둡니다.
-        latency: 0
-      }
-    });
+    // 순수 마이크 요청 (모든 최적화 옵션 끄기)
+    try {
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      console.log("디버그: 마이크 스트림 획득 성공.");
+    } catch (err) {
+      console.error("디버그 에러: 마이크 권한 실패.", err);
+      alert("DEBUG: 마이크 연결 실패 - " + err.name);
+      return;
+    }
 
     micSourceNode = audioCtx.createMediaStreamSource(micStream);
-
-    // 1. 목소리 볼륨 앰프 (소리를 2.5배로 크게 뻥튀기)
     dryGainNode = audioCtx.createGain();
-    dryGainNode.gain.value = 2.5; 
 
-    // 2. 초경량 1단 리버브 파이프 (지연 부담 최소화)
-    delayNode = audioCtx.createDelay();
-    delayNode.delayTime.value = 0.08; // 0.08초의 아주 찰나의 공간감만 부여
-
-    wetGainNode = audioCtx.createGain();
-    
-    // 신호 선로 연결
-    micSourceNode.connect(dryGainNode); // 생목소리 앰프 연결
-    micSourceNode.connect(delayNode);   // 초경량 리버브 연결
-    delayNode.connect(wetGainNode);
-
-    updateReverb(document.getElementById('reverbRange').value);
+    // 볼륨 조절 없이 다이렉트 연결
+    micSourceNode.connect(dryGainNode);
   }
 
-  // 모바일 브라우저 오디오 잠금 강제 해제
+  // 브라우저 오디오 잠금 해제
   if (audioCtx.state === 'suspended') {
     await audioCtx.resume();
+    console.log("디버그: 오디오 잠금 해제됨.");
   }
 }
 
-// 리버브 수치 변경
-function updateReverb(val) {
-  document.getElementById('reverbValText').innerText = val + '%';
-  if (wetGainNode) {
-    wetGainNode.gain.value = (val / 100) * 0.5; // 은은하고 부드러운 리버브
-  }
-}
-
-// 귀 모니터링 토글 스위치
+// 귀 모니터링 토글 (다이렉트 연결)
 async function toggleMonitoring() {
   const isChecked = document.getElementById('monitorToggle').checked;
+  console.log("디버그: 모니터링 토글 ->", isChecked);
   try {
     await initAudioEngine();
+    if (!micStream) return; // 마이크 초기화 실패 시 중단
+
     if (isChecked) {
+      console.log("디버그: 마이크 ➔ 이어폰 직통 연결");
       dryGainNode.connect(audioCtx.destination);
-      wetGainNode.connect(audioCtx.destination);
     } else {
+      console.log("디버그: 마이크 연결 해제");
       dryGainNode.disconnect(audioCtx.destination);
-      wetGainNode.disconnect(audioCtx.destination);
     }
   } catch (err) {
-    alert("마이크 연결에 실패했습니다. 권한을 확인해 보세요.");
+    console.error("디버그 에러: toggleMonitoring 실패.", err);
+    alert("DEBUG: 연결 실패 - " + err.message);
     document.getElementById('monitorToggle').checked = false;
   }
 }
+// ... main.js의 나머지 녹음 관련 코드 ...
